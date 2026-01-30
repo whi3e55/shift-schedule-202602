@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <!-- 增强移动端适配（兼容iOS所有浏览器） -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>2026年2月排班日历</title>
+    <style>
+        /* 全局样式重置（增强版） */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            background-color: #f5f5f5;
+            min-height: 100%; /* 替换100vh，避免iOS状态栏截断 */
+            height: auto;
+            padding-bottom: 20px; /* 底部留白，避免内容被遮挡 */
+        }
+
+        /* 日历容器：增强小屏适配 */
+        .calendar-container {
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden; /* 防止内容溢出 */
+        }
+
+        .calendar-title {
+            text-align: center;
+            font-size: clamp(18px, 5vw, 24px);
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        /* 星期头部：固定高度，避免塌陷 */
+        .week-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+            margin-bottom: 3px;
+            height: 40px; /* 固定高度，兼容小屏 */
+        }
+
+        .week-header > div {
+            text-align: center;
+            font-weight: bold;
+            line-height: 40px; /* 行高等于高度，垂直居中 */
+            font-size: clamp(12px, 3vw, 14px);
+            color: #666;
+        }
+
+        /* 日期格子容器：优化网格布局 */
+        .date-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+            width: 100%;
+        }
+
+        /* 替换aspect-ratio：用padding-top实现正方形（兼容所有浏览器） */
+        .date-cell {
+            position: relative;
+            width: 100%;
+            padding-top: 100%; /* 1:1 正方形 */
+            border: 1px solid #eee;
+            border-radius: 4px;
+            font-size: clamp(12px, 3vw, 16px);
+        }
+
+        /* 日期格子内容：绝对定位居中 */
+        .date-cell .content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 班次背景色（保留原有逻辑） */
+        .date-cell.rest, .shift-window.rest { background-color: #e6f7f0; }
+        .date-cell.morning, .shift-window.morning { background-color: #fff9e6; }
+        .date-cell.evening, .shift-window.evening { background-color: #e6eaf0; }
+
+        /* 占位空格子：和日期格子统一样式 */
+        .empty-cell {
+            position: relative;
+            width: 100%;
+            padding-top: 100%;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            background-color: #fafafa;
+        }
+
+        /* 班次窗口父容器：增强小屏换行 */
+        .shift-windows {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            width: 100%;
+            max-width: 450px;
+            margin-top: 10px;
+        }
+
+        /* 班次窗口：替换aspect-ratio为padding-top */
+        .shift-window {
+            position: relative;
+            width: clamp(150px, 45vw, 200px);
+            padding-top: clamp(150px, 45vw, 200px); /* 1:1 正方形 */
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #eee;
+            margin-bottom: 10px; /* 小屏换行后留白 */
+        }
+
+        /* 班次窗口内容：绝对定位居中 */
+        .shift-window .content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .window-title {
+            font-size: clamp(14px, 4vw, 16px);
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .shift-date {
+            font-size: clamp(24px, 8vw, 32px);
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .shift-type {
+            font-size: clamp(16px, 5vw, 20px);
+            color: #555;
+        }
+
+        /* 小屏适配：iPhone 12 mini等超小屏优化 */
+        @media (max-width: 380px) {
+            .calendar-container {
+                padding: 10px;
+            }
+            .shift-windows {
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 日历容器 -->
+    <div class="calendar-container">
+        <div class="calendar-title">2026年2月 排班日历</div>
+        <div class="week-header">
+            <div>周一</div>
+            <div>周二</div>
+            <div>周三</div>
+            <div>周四</div>
+            <div>周五</div>
+            <div>周六</div>
+            <div>周日</div>
+        </div>
+        <div class="date-grid" id="dateGrid"></div>
+    </div>
+
+    <!-- 今日+明日班次窗口 -->
+    <div class="shift-windows">
+        <div class="shift-window" id="todayWindow">
+            <div class="content">
+                <div class="window-title">今日</div>
+                <div class="shift-date" id="todayDate"></div>
+                <div class="shift-type" id="todayShift"></div>
+            </div>
+        </div>
+        <div class="shift-window" id="tomorrowWindow">
+            <div class="content">
+                <div class="window-title">明日</div>
+                <div class="shift-date" id="tomorrowDate"></div>
+                <div class="shift-type" id="tomorrowShift"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 2026年2月排班表（不变）
+        const shiftSchedule = [
+            '休','早','早','早','早','早','休','晚',
+            '晚','晚','晚','休','晚','晚','休','休',
+            '休','休','休','休','休','休','早','休',
+            '晚','晚','早','早'
+        ];
+        const emptyCellsCount = 6; // 2月1日是周日，前6个格子为空
+        const totalDays = 28;      // 2026年2月共28天
+        const targetMonth = 1;     // JS中2月对应1
+
+        // 渲染日历（修复DOM结构，适配新样式）
+        function renderCalendar() {
+            const dateGrid = document.getElementById('dateGrid');
+            dateGrid.innerHTML = ''; // 清空原有内容，避免重复渲染
+
+            // 添加占位空格子
+            for (let i = 0; i < emptyCellsCount; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'empty-cell';
+                dateGrid.appendChild(emptyCell);
+            }
+
+            // 渲染日期格子
+            for (let date = 1; date <= totalDays; date++) {
+                const cell = document.createElement('div');
+                const shift = shiftSchedule[date - 1];
+                
+                // 设置班次样式
+                cell.className = `date-cell ${
+                    shift === '休' ? 'rest' : shift === '早' ? 'morning' : 'evening'
+                }`;
+
+                // 日期内容容器（适配绝对定位）
+                const content = document.createElement('div');
+                content.className = 'content';
+
+                // 日期数字
+                const dateNum = document.createElement('div');
+                dateNum.textContent = date;
+
+                // 排班文字
+                const shiftText = document.createElement('div');
+                shiftText.textContent = shift;
+                shiftText.style.fontSize = 'clamp(10px, 2.5vw, 14px)';
+                shiftText.style.marginTop = '3px';
+
+                // 组装DOM
+                content.appendChild(dateNum);
+                content.appendChild(shiftText);
+                cell.appendChild(content);
+                dateGrid.appendChild(cell);
+            }
+        }
+
+        // 渲染班次窗口（逻辑不变，适配新DOM）
+        function renderShiftWindow(dateObj, windowId, dateId, shiftId) {
+            const currentDate = dateObj.getDate();
+            const currentMonth = dateObj.getMonth();
+
+            if (currentMonth !== targetMonth || currentDate < 1 || currentDate > totalDays) {
+                document.getElementById(dateId).textContent = '非2月';
+                document.getElementById(shiftId).textContent = '无排班';
+                return;
+            }
+
+            const shift = shiftSchedule[currentDate - 1];
+            document.getElementById(dateId).textContent = currentDate + '号';
+            document.getElementById(shiftId).textContent = 
+                shift === '休' ? '休息日' : shift === '早' ? '早班' : '晚班';
+            
+            const windowEl = document.getElementById(windowId);
+            windowEl.className = '';
+            windowEl.classList.add('shift-window', 
+                shift === '休' ? 'rest' : shift === '早' ? 'morning' : 'evening'
+            );
+        }
+
+        // 渲染今日/明日
+        function renderTodayAndTomorrow() {
+            const today = new Date();
+            renderShiftWindow(today, 'todayWindow', 'todayDate', 'todayShift');
+
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+            renderShiftWindow(tomorrow, 'tomorrowWindow', 'tomorrowDate', 'tomorrowShift');
+        }
+
+        // 优先触发DOM加载完成（比window.onload早，避免渲染延迟）
+        document.addEventListener('DOMContentLoaded', function() {
+            renderCalendar();
+            renderTodayAndTomorrow();
+        });
+
+        // 兜底：窗口大小变化时重新渲染（适配旋转屏幕）
+        window.addEventListener('resize', function() {
+            renderCalendar();
+            renderTodayAndTomorrow();
+        });
+    </script>
+</body>
+</html>
